@@ -53,6 +53,7 @@ use constants_module
 ! Flag for OMP parallel version
 !
 logical :: mc_openmp_parallel = .false.
+logical :: mc_openmp_warning_shown = .false.
 !
 ! Current photon number
 ! (Must ensure huge range here)
@@ -318,11 +319,14 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   !
   ! If OpenMP Parallel, make a warning
   !
-  !$ write(stdo,*) 'Beware: The OpenMP-parallel acceleration of RADMC-3D has '
-  !$ write(stdo,*) '        not yet been tested with all of the modes and'
-  !$ write(stdo,*) '        features that RADMC-3D offers. Please check '
-  !$ write(stdo,*) '        your parallel results against the serial version'
-  !$ write(stdo,*) '        (i.e. compiling without -fopenmp). '
+  if (mc_openmp_parallel .and. (.not. mc_openmp_warning_shown)) then
+     write(stdo,*) 'Beware: The OpenMP-parallel acceleration of RADMC-3D has '
+     write(stdo,*) '        not yet been tested with all of the modes and'
+     write(stdo,*) '        features that RADMC-3D offers. Please check '
+     write(stdo,*) '        your parallel results against the serial version'
+     write(stdo,*) '        (i.e. compiling without -fopenmp). '
+     mc_openmp_warning_shown = .true.
+  endif
   !
   ! Currently the polarization module is not compatible with mirror
   ! symmetry mode in spherical coordinates. 
@@ -2203,12 +2207,14 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   doubleprecision :: tempav,dum
   doubleprecision :: aa,fact,seconds
   doubleprecision :: ener,lumtotinv,entotal
+  doubleprecision :: frac
   logical :: ievenodd
   logical,optional :: resetseed
   integer :: ierror,ierrpriv,countwrite,index,illum
   integer :: inu,ispec,istar,icell,nsrc,nstarsrc
   integer*8 :: iphot,ipstart,nphot,cnt,cntdump
   integer :: iseeddum,isd,itemplate
+  integer :: perc
   logical :: mc_emergency_break
   !$ integer :: i
   !$ conflict_counter = 0
@@ -2516,8 +2522,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
       write(stdo,*) '    !   RESTARTING THE SIMULATION   !   '
       call flush(stdo)
 !!!      call read_safety_backup_mctherm(ievenodd,params)
-      write(stdo,*) 'ERRROR: Safety backup is not yet built in.'
-      stop
       write(stdo,821) iphot
 821   format('     !   AT PHOTON NR ',I9,'      !   ')
       !
@@ -2600,7 +2604,7 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !
    !$ id=OMP_get_thread_num()
    !$ nthreads=OMP_get_num_threads()
-   !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
+  !$ CONTINUE
    !$ iseed=-abs(iseed_start+id)
    !$OMP DO SCHEDULE(dynamic)
    !
@@ -2618,8 +2622,10 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
          !$OMP CRITICAL
          cnt   = cnt + 1
          if(mod(cnt,countwrite).eq.0) then
-            !$   write(stdo,*) 'Thread:',id,'Photon nr:',cnt
-            if(.not.mc_openmp_parallel) write(stdo,*) 'Photon nr ',iphot
+            if (cnt.gt.nphot) cnt = nphot
+            frac = dble(cnt)/dble(nphot)
+            perc = int(frac*100.d0)
+            write(stdo,'(A,"Progress ",I3,"%",1X,I15,"/",I15)',advance='no') char(13), perc, cnt, nphot
             call flush(stdo)
          endif
          !$OMP END CRITICAL
@@ -2666,6 +2672,8 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    enddo
    !$OMP END DO
    !$OMP END PARALLEL
+   write(stdo,*)
+   call flush(stdo)
    !
    ! OpenMP Parallellization: destroy locks
    !
@@ -2791,6 +2799,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   type(mc_params) :: params
   integer :: ierror,ierrpriv,inu
   doubleprecision :: ener,lumtotinv,temp,freq,fact
+  doubleprecision :: frac
   logical :: ievenodd
   logical,optional :: resetseed
   logical,optional :: scatsrc,meanint
@@ -2799,6 +2808,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   integer :: countwrite,index
   integer :: ispec,istar,icell,illum
   integer :: iseeddum,isd,itemplate,nsrc,nstarsrc
+  integer :: perc
   logical :: mc_emergency_break
   doubleprecision:: seconds
   !$ integer :: ierr,i
@@ -3193,7 +3203,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !
      !$ id=OMP_get_thread_num()
      !$ nthreads=OMP_get_num_threads()
-     !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
+  !$ CONTINUE
      !$ iseed=-abs(iseed_start+id)
      !$OMP DO SCHEDULE(dynamic)
      !
@@ -3211,8 +3221,10 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
         !$OMP CRITICAL
         cnt   = cnt + 1
         if(mod(cnt,countwrite).eq.0) then
-           !$   write(stdo,*) 'Thread:',id,'Photon nr:',cnt
-           if(.not.mc_openmp_parallel) write(stdo,*) 'Photon nr ',iphot
+           if (cnt.gt.nphot) cnt = nphot
+           frac = dble(cnt)/dble(nphot)
+           perc = int(frac*100.d0)
+           write(stdo,'(A,"Progress ",I3,"%",1X,I15,"/",I15)',advance='no') char(13), perc, cnt, nphot
            call flush(stdo)
         endif
         !$OMP END CRITICAL
@@ -3249,6 +3261,8 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   enddo
   !$OMP END DO 
   !$OMP END PARALLEL
+  write(stdo,*)
+  call flush(stdo)
   !
   ! OpenMP Parallellization: destroy locks
   !

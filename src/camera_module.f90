@@ -79,6 +79,7 @@ module camera_module
   !
   logical :: camera_localobserver=.false.
   integer :: camera_localobs_projection=1
+  logical :: camera_speed_tip_shown = .false.
   !
   !   If this integer is set to 1, then the stars are included in the images.
   !   In this version they are only included as point sources.
@@ -3854,12 +3855,13 @@ subroutine camera_make_rect_image(img,tausurf)
            ! If the Monte Carlo settings are very conservative, then give a warning
            ! that you may want to change this (but at your own risk). 
            !
-           if(mc_scat_maxtauabs.gt.5.d0) then
+           if((mc_scat_maxtauabs.gt.5.d0).and.(.not. camera_speed_tip_shown)) then
               write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative (i.e. safe but slow).'
               write(stdo,*) '   A photon package in monochromatic Monte Carlo is only destroyed after tau_abs = ',mc_scat_maxtauabs
               write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
               write(stdo,*) '   You can (though at your own risk) speed this up by adding the following line to radmc3d.inp:'
               write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+              camera_speed_tip_shown = .true.
            endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
@@ -3972,14 +3974,17 @@ subroutine camera_make_rect_image(img,tausurf)
               ! that you may want to change this (but at your own risk). 
               !
               if(mc_scat_maxtauabs.gt.5.d0) then
-                 write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
-                      '(i.e. safe but slow).'
-                 write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
-                      'after tau_abs = ',mc_scat_maxtauabs
-                 write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
-                 write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
-                      'line to radmc3d.inp:'
-                 write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+                 if(.not. camera_speed_tip_shown) then
+                    write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
+                         '(i.e. safe but slow).'
+                    write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
+                         'after tau_abs = ',mc_scat_maxtauabs
+                    write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+                    write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
+                         'line to radmc3d.inp:'
+                    write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+                    camera_speed_tip_shown = .true.
+                 endif
               else
                  if(mc_scat_maxtauabs.gt.2.d0) then
                     write(stdo,'(A36,F6.2,A36)') ' Warning: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
@@ -7009,14 +7014,17 @@ subroutine camera_make_circ_image()
               ! that you may want to change this (but at your own risk). 
               !
               if(mc_scat_maxtauabs.gt.5.d0) then
-                 write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
-                      '(i.e. safe but slow).'
-                 write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
-                      'after tau_abs = ',mc_scat_maxtauabs
-                 write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
-                 write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
-                      'line to radmc3d.inp:'
-                 write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+                 if(.not. camera_speed_tip_shown) then
+                    write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
+                         '(i.e. safe but slow).'
+                    write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
+                         'after tau_abs = ',mc_scat_maxtauabs
+                    write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+                    write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
+                         'line to radmc3d.inp:'
+                    write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+                    camera_speed_tip_shown = .true.
+                 endif
               else
                  if(mc_scat_maxtauabs.gt.2.d0) then
                     write(stdo,'(A36,F6.2,A36)') ' Warning: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
