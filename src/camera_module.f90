@@ -4219,6 +4219,8 @@ subroutine camera_make_rect_image(img,tausurf)
     integer :: id,nthreads
     double precision :: seconds
     integer :: pixel_count = 0
+    integer(kind=8) :: total_pix,pixels_done,step,last_print
+    integer :: iprogress
     !$ integer OMP_get_num_threads
     !$ integer OMP_get_thread_num
     !$ integer OMP_get_num_procs
@@ -4227,6 +4229,10 @@ subroutine camera_make_rect_image(img,tausurf)
     !
     camera_subpixeling_npixfine = 0
     camera_subpixeling_npixtot  = 0
+    pixels_done = 0_8
+    total_pix   = camera_image_nx*camera_image_ny
+    step        = max(1_8,total_pix/20_8)
+    last_print  = -step
     !
     ! Here we decide whether to make a "normal" image or
     ! whether we find the tau=1 surface 
@@ -4245,11 +4251,11 @@ subroutine camera_make_rect_image(img,tausurf)
        !
        !$OMP PRIVATE(px,py,id,nthreads,pixel_count)
        !
-       !$ pixel_count = 0
+       ! pixel_count = 0
        !
-       !$ id=OMP_get_thread_num()
-       !$ nthreads=OMP_get_num_threads()
-       !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
+       ! id=OMP_get_thread_num()
+       ! nthreads=OMP_get_num_threads()
+       ! write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
        flag_quv_too_big = .false.
        !
        !$OMP DO COLLAPSE(2) SCHEDULE(dynamic)
@@ -4304,6 +4310,18 @@ subroutine camera_make_rect_image(img,tausurf)
              endif
              !
              !$ pixel_count = pixel_count + 1
+             !$OMP ATOMIC
+             pixels_done = pixels_done + 1_8
+             if(mod(pixels_done,step).eq.0_8) then
+                !$OMP CRITICAL
+                if(pixels_done.gt.last_print) then
+                   last_print = pixels_done
+                   iprogress = int(100.d0*dble(pixels_done)/dble(total_pix))
+                   write(stdo,*) 'Ray-tracing progress: ', iprogress, '%'
+                   call flush(stdo)
+                endif
+                !$OMP END CRITICAL
+             endif
           enddo
        enddo
        !
@@ -4315,7 +4333,7 @@ subroutine camera_make_rect_image(img,tausurf)
        !
        ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (FINISH) ***
        !
-       !$   write(stdo,*) 'Thread:',id,'raytraced:',pixel_count,'pixels'
+       !   write(stdo,*) 'Thread:',id,'raytraced:',pixel_count,'pixels'
        !
        !$OMP END PARALLEL
        !
@@ -4392,6 +4410,15 @@ subroutine camera_make_rect_image(img,tausurf)
                 camera_tausurface_z(ix,iy,inu00:inu11) = camera_zstop(inu00:inu11)
              endif
              !
+             pixels_done = pixels_done + 1_8
+             if(mod(pixels_done,step).eq.0_8) then
+                if(pixels_done.gt.last_print) then
+                   last_print = pixels_done
+                   iprogress = int(100.d0*dble(pixels_done)/dble(total_pix))
+                   write(stdo,*) 'Ray-tracing progress: ', iprogress, '%'
+                   call flush(stdo)
+                endif
+             endif
           enddo
        enddo
        !
@@ -7277,11 +7304,11 @@ subroutine camera_make_circ_image()
     !
     !$OMP PRIVATE(ir,iphi,px,py,x,y,z,dirx,diry,dirz,distance,r,phi,id,nthreads,pixel_count)
     !
-    !$ pixel_count = 0
+    ! pixel_count = 0
     !
-    !$ id=OMP_get_thread_num()
-    !$ nthreads=OMP_get_num_threads()
-    !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
+    ! id=OMP_get_thread_num()
+    ! nthreads=OMP_get_num_threads()
+    ! write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
     flag_quv_too_big = .false.
     !
     !$OMP DO COLLAPSE(2) SCHEDULE(dynamic)
@@ -7347,7 +7374,7 @@ subroutine camera_make_circ_image()
              enddo
           endif
           !
-          !$ pixel_count = pixel_count + 1
+          ! pixel_count = pixel_count + 1
        enddo
     enddo
     !
