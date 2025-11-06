@@ -848,6 +848,8 @@ program radmc3d
                       ieventcounttot/(1.d0*rt_mcparams%nphot_therm)
            write(stdo,*) 'Average nr of times a photon stays in the same cell  = ', &
                       mc_revisitcell/(1.d0*mc_visitcell)
+           write(stdo,*) 'Maximum nr of times a photon stayed in the same cell = ', &
+                      int(mc_revisitcell_max)
            if(.not.rt_mcparams%mod_random_walk) then
               if(mc_revisitcell/(1.d0*mc_visitcell).gt.400) then
                  write(stdo,*) '   ---> This number is very high, and therefore responsible for slow performance.'
@@ -1956,15 +1958,24 @@ program radmc3d
         vtkfilename = 'model.vtk'
         vtktitle    = 'RADMC-3D Model'
         write(stdo,*) 'Opening and writing grid to VTK file ',trim(vtkfilename)
-        call amr_open_vtk_file(1,vtkfilename,vtktitle,.true., igrid_coord)
+        if (rto_style .eq. 3) then
+          call amr_open_vtk_file_b(1,vtkfilename,vtktitle,.true., igrid_coord)
+        else
+          call amr_open_vtk_file(1,vtkfilename,vtktitle,.true., igrid_coord)
+        endif
         if(do_write_vtk_dust_density) then
            if(allocated(dustdens)) then
               write(stdo,*) 'Writing dust density to VTK file'
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the scalar field name)
               vtkFieldName = 'dust_density'
-              call amr_write_vtk_file_scalar_alt(1,dust_nr_species,amr_nrleafs,&
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_scalar_alt_b(1,dust_nr_species,amr_nrleafs,&
                    vtk_dust_ispec,dustdens,.true.,vtkFieldName)
+              else
+                call amr_write_vtk_file_scalar_alt(1,dust_nr_species,amr_nrleafs,&
+                   vtk_dust_ispec,dustdens,.true.,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since dust density is not allocated,',& 
                    'no VTK data for dust density was written...'
@@ -1976,8 +1987,13 @@ program radmc3d
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the scalar field name)
               vtkFieldName = 'dust_temperature'
-              call amr_write_vtk_file_scalar_alt(1,dust_nr_species,amr_nrleafs,&
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_scalar_alt_b(1,dust_nr_species,amr_nrleafs,&
                    vtk_dust_ispec,dusttemp,.false.,vtkFieldName)
+              else
+                call amr_write_vtk_file_scalar_alt(1,dust_nr_species,amr_nrleafs,&
+                   vtk_dust_ispec,dusttemp,.false.,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since dust temperature is not allocated,',&
                    ' no VTK data for dust temperature was written...'
@@ -1989,7 +2005,11 @@ program radmc3d
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the scalar field name)
               vtkFieldName = 'gas_density'
-              call amr_write_vtk_file_scalar(1,amr_nrleafs,gasdens,.true.,vtkFieldName)
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_scalar_b(1,amr_nrleafs,gasdens,.true.,vtkFieldName)
+              else
+                call amr_write_vtk_file_scalar(1,amr_nrleafs,gasdens,.true.,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since gas density is not allocated, ',&
                    'no VTK data for gas density was written...'
@@ -2001,7 +2021,11 @@ program radmc3d
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the scalar field name)
               vtkFieldName = 'gas_temperature'
-              call amr_write_vtk_file_scalar(1,amr_nrleafs,gastemp,.false.,vtkFieldName)
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_scalar_b(1,amr_nrleafs,gastemp,.false.,vtkFieldName)
+              else
+                call amr_write_vtk_file_scalar(1,amr_nrleafs,gastemp,.false.,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since gas temperature is not allocated, ',&
                    'no VTK data for gas temperature was written...'
@@ -2013,8 +2037,13 @@ program radmc3d
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the scalar field name)
               vtkFieldName = 'molecule_density'
-              call amr_write_vtk_file_scalar_alt(1,lines_nr_species,amr_nrleafs, &
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_scalar_alt_b(1,lines_nr_species,amr_nrleafs, &
                    vtk_lines_ispec,gas_chemspec_numberdens,.true.,vtkFieldName)
+              else
+                call amr_write_vtk_file_scalar_alt(1,lines_nr_species,amr_nrleafs, &
+                   vtk_lines_ispec,gas_chemspec_numberdens,.true.,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since gas_chemspec_numberdens is not allocated, ',&
                    'no VTK data for molecule/atom density was written...'
@@ -2026,9 +2055,15 @@ program radmc3d
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the scalar field name)
               vtkFieldName = 'level_population'
-              call amr_write_vtk_file_scalar_alt2(1,lines_nrlevels_subset_max, &
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_scalar_alt2_b(1,lines_nrlevels_subset_max, &
                    lines_nr_species,amr_nrleafs,vtk_lines_ispec,vtk_lines_ilevel, &
                    lines_levelpop,.true.,vtkFieldName)
+              else
+                call amr_write_vtk_file_scalar_alt2(1,lines_nrlevels_subset_max, &
+                   lines_nr_species,amr_nrleafs,vtk_lines_ispec,vtk_lines_ilevel, &
+                   lines_levelpop,.true.,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since level population array is not allocated, ',&
                    'no VTK data for level populations was written...'
@@ -2040,7 +2075,11 @@ program radmc3d
               ! Attila Juhasz - pass the vtkFieldName to the VTK writer (it will
               ! appear in the vector field name) 
               vtkFieldName = 'gas_velocity'
-              call amr_write_vtk_file_vector(1,amr_nrleafs,gasvelocity,igrid_coord,vtkFieldName)
+              if (rto_style .eq. 3) then
+                call amr_write_vtk_file_vector_b(1,amr_nrleafs,gasvelocity,igrid_coord,vtkFieldName)
+              else
+                call amr_write_vtk_file_vector(1,amr_nrleafs,gasvelocity,igrid_coord,vtkFieldName)
+              endif
            else
               write(stdo,*) 'WARNING: Since gas velocity is not allocated, ',&
                    'no VTK data for gas velocity was written...'
@@ -2350,6 +2389,13 @@ subroutine read_radmcinp_file()
      call parse_input_double ('camera_min_drr@               ',mindrr)
      call parse_input_integer('camera_interpol_jnu@          ',interpoljnu)
      call parse_input_double ('camera_maxdphi@               ',camera_maxdphi)
+     idum=0
+     call parse_input_integer('camera_diagnostics_subpix@    ',idum)
+     if(idum.eq.0) then
+        camera_diagnostics_subpix = .false.
+     else
+        camera_diagnostics_subpix = .true.
+     endif
      call parse_input_integer('sources_interpol_jnu@         ',interpoljnu)
 !     call parse_input_double ('lines_maxdoppler@             ',lines_maxdoppler)
      call parse_input_integer('lines_mode@                   ',lines_mode)
@@ -3025,6 +3071,34 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
         call ggetarg(iarg,buffer,fromstdi)
         iarg = iarg+1
         read(buffer,*) rt_mcparams%nphot_mono
+        gotit = .true.
+     elseif(buffer(1:10).eq.'selectscat') then
+        !
+        ! Select which scattering to include. For instance, if you want to
+        ! see the role of multiple scattering, you can do selectscat 2 1000000.
+        ! Or if you are interested only in the second scattering you can do
+        ! selectscat 2 2. Or only first scattering: selectscat 1 1.
+        ! NOTE: Only for analysis or debugging, not for production runs!
+        !
+        if(iarg+1.gt.numarg) then
+           write(stdo,*) 'ERROR while reading command line options: cannot read selectscat.'
+           write(stdo,*) '      Expecting 2 integers after selectscat.'
+           stop
+        endif
+        call ggetarg(iarg,buffer,fromstdi)
+        iarg = iarg+1
+        read(buffer,*) selectscat_iscat_first
+        if(selectscat_iscat_first.lt.1) then
+           write(stdo,*) 'ERROR: selectscat_iscat_first must be .ge.1'
+           stop 3284
+        endif
+        call ggetarg(iarg,buffer,fromstdi)
+        iarg = iarg+1
+        read(buffer,*) selectscat_iscat_last
+        if(selectscat_iscat_last.lt.selectscat_iscat_first) then
+           write(stdo,*) 'ERROR: selectscat_iscat_last must be .ge.selectscat_iscat_first'
+           stop 3285
+        endif
         gotit = .true.
      elseif(buffer(1:10).eq.'countwrite') then
         !
@@ -3949,16 +4023,16 @@ subroutine write_banner()
   write(stdo,*) '                                                                '
   write(stdo,*) '                         VERSION 2.0                            '
   write(stdo,*) '                                                                '
-  write(stdo,*) '               (c) 2008-2020 Cornelis Dullemond                 '
+  write(stdo,*) '               (c) 2008-2023 Cornelis Dullemond                 '
   write(stdo,*) '                                                                '
   write(stdo,*) '      Please feel free to ask questions. Also please report     '
   write(stdo,*) '       bugs and/or suspicious behavior without hestitation.     '
   write(stdo,*) '     The reliability of this code depends on your vigilance!    '
   write(stdo,*) '                   dullemond@uni-heidelberg.de                  '
   write(stdo,*) '                                                                '
-  write(stdo,*) '  To keep up-to-date with bug-alarms and bugfixes, register to  '
-  write(stdo,*) '                    the RADMC-3D forum:                         '
-  write(stdo,*) '           http://radmc3d.ita.uni-heidelberg.de/phpbb/          '
+  write(stdo,*) '  To keep up-to-date with bug-alarms and bugfixes, follow the   '
+  write(stdo,*) '                    RADMC-3D code on github                     '
+  write(stdo,*) '            https://github.com/dullemond/radmc3d-2.0            '
   write(stdo,*) '                                                                '
   write(stdo,*) '             Please visit the RADMC-3D home page at             '
   write(stdo,*) ' http://www.ita.uni-heidelberg.de/~dullemond/software/radmc-3d/ '

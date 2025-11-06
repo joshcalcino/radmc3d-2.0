@@ -166,7 +166,8 @@ The code profited from testing, feedback and bug reports from (incomplete list):
 * Seokho Lee
 * Blake Hord
 * Tilman Birnstiel
-
+* Uma Gorti
+  
 and others.
 
 

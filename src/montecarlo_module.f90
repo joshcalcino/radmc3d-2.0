@@ -53,12 +53,13 @@ use constants_module
 ! Flag for OMP parallel version
 !
 logical :: mc_openmp_parallel = .false.
+logical :: mc_openmp_warning_shown = .false.
 !
 ! Current photon number
 ! (Must ensure huge range here)
 !
 integer(kind=8) :: ieventcounttot
-double precision :: mc_visitcell,mc_revisitcell
+double precision :: mc_visitcell,mc_revisitcell,mc_revisitcell_max
 !
 ! Flag saying whether or not to interpolate the temperature emission
 ! database in temperature
@@ -236,6 +237,16 @@ double precision, allocatable :: mc_stellarsrc_templates(:,:)
 ! Global flag for Monte Carlo
 !
 logical :: mc_photon_destroyed
+!
+! For analysis or debugging: Allowing to record only e.g. second
+! to fourth scattering source or mean intensity (only for monochromatic
+! monte carlo). Note that this does not yield any real observables, but
+! it can help understand the results.
+!
+integer :: selectscat_iscat
+integer :: selectscat_iscat_first = 1
+integer :: selectscat_iscat_last  = 1000000000
+!
 !----TO-ADD----
 !
 ! Array for skipping very optically thick cells
@@ -272,6 +283,8 @@ logical :: mc_photon_destroyed
 !$OMP THREADPRIVATE(alpha_a_pm,mrw_dcumen)
 !$OMP THREADPRIVATE(mc_photon_destroyed)
 !$OMP THREADPRIVATE(mcscat_phasefunc)
+!$OMP THREADPRIVATE(db_cumul)
+!$OMP THREADPRIVATE(selectscat_iscat)
 
 contains
 
@@ -306,11 +319,14 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   !
   ! If OpenMP Parallel, make a warning
   !
-  !$ write(stdo,*) 'Beware: The OpenMP-parallel acceleration of RADMC-3D has '
-  !$ write(stdo,*) '        not yet been tested with all of the modes and'
-  !$ write(stdo,*) '        features that RADMC-3D offers. Please check '
-  !$ write(stdo,*) '        your parallel results against the serial version'
-  !$ write(stdo,*) '        (i.e. compiling without -fopenmp). '
+  if (mc_openmp_parallel .and. (.not. mc_openmp_warning_shown)) then
+     write(stdo,*) 'Beware: The OpenMP-parallel acceleration of RADMC-3D has '
+     write(stdo,*) '        not yet been tested with all of the modes and'
+     write(stdo,*) '        features that RADMC-3D offers. Please check '
+     write(stdo,*) '        your parallel results against the serial version'
+     write(stdo,*) '        (i.e. compiling without -fopenmp). '
+     mc_openmp_warning_shown = .true.
+  endif
   !
   ! Currently the polarization module is not compatible with mirror
   ! symmetry mode in spherical coordinates. 
@@ -2191,17 +2207,16 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   doubleprecision :: tempav,dum
   doubleprecision :: aa,fact,seconds
   doubleprecision :: ener,lumtotinv,entotal
+  doubleprecision :: frac
   logical :: ievenodd
   logical,optional :: resetseed
   integer :: ierror,ierrpriv,countwrite,index,illum
   integer :: inu,ispec,istar,icell,nsrc,nstarsrc
   integer*8 :: iphot,ipstart,nphot,cnt,cntdump
   integer :: iseeddum,isd,itemplate
+  integer :: perc
   logical :: mc_emergency_break
   !$ integer :: i
-  !$ integer OMP_get_num_threads
-  !$ integer OMP_get_thread_num
-  !$ integer OMP_get_num_procs
   !$ conflict_counter = 0
   !
   ! Some consistency checks
@@ -2247,6 +2262,7 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   ieventcounttot = 0
   mc_visitcell = 0
   mc_revisitcell = 0
+  mc_revisitcell_max = 0
   !
   ! If write statistics, then open this file
   !
@@ -2506,8 +2522,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
       write(stdo,*) '    !   RESTARTING THE SIMULATION   !   '
       call flush(stdo)
 !!!      call read_safety_backup_mctherm(ievenodd,params)
-      write(stdo,*) 'ERRROR: Safety backup is not yet built in.'
-      stop
       write(stdo,821) iphot
 821   format('     !   AT PHOTON NR ',I9,'      !   ')
       !
@@ -2585,11 +2599,12 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !!$ it is necessary to ensure that only one thread at a time is writing/updating the memory
    !!$ location of the considered variable.
    !
-   !$OMP REDUCTION(+:mc_integerspec,mc_visitcell,mc_revisitcell,ieventcounttot)
+   !$OMP REDUCTION(+:mc_integerspec,mc_visitcell,mc_revisitcell,ieventcounttot) &
+   !$OMP REDUCTION(max:mc_revisitcell_max)
    !
    !$ id=OMP_get_thread_num()
    !$ nthreads=OMP_get_num_threads()
-   !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
+  !$ CONTINUE
    !$ iseed=-abs(iseed_start+id)
    !$OMP DO SCHEDULE(dynamic)
    !
@@ -2607,8 +2622,10 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
          !$OMP CRITICAL
          cnt   = cnt + 1
          if(mod(cnt,countwrite).eq.0) then
-            !$   write(stdo,*) 'Thread:',id,'Photon nr:',cnt
-            if(.not.mc_openmp_parallel) write(stdo,*) 'Photon nr ',iphot
+            if (cnt.gt.nphot) cnt = nphot
+            frac = dble(cnt)/dble(nphot)
+            perc = int(frac*100.d0)
+            write(stdo,'(A,"Progress ",I3,"%",1X,I15,"/",I15)',advance='no') char(13), perc, cnt, nphot
             call flush(stdo)
          endif
          !$OMP END CRITICAL
@@ -2655,6 +2672,8 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    enddo
    !$OMP END DO
    !$OMP END PARALLEL
+   write(stdo,*)
+   call flush(stdo)
    !
    ! OpenMP Parallellization: destroy locks
    !
@@ -2780,6 +2799,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   type(mc_params) :: params
   integer :: ierror,ierrpriv,inu
   doubleprecision :: ener,lumtotinv,temp,freq,fact
+  doubleprecision :: frac
   logical :: ievenodd
   logical,optional :: resetseed
   logical,optional :: scatsrc,meanint
@@ -2788,12 +2808,10 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   integer :: countwrite,index
   integer :: ispec,istar,icell,illum
   integer :: iseeddum,isd,itemplate,nsrc,nstarsrc
+  integer :: perc
   logical :: mc_emergency_break
   doubleprecision:: seconds
   !$ integer :: ierr,i
-  !$ integer OMP_get_num_threads
-  !$ integer OMP_get_thread_num
-  !$ integer OMP_get_num_procs
   !$ conflict_counter = 0
   !
   ! Some consistency checks
@@ -2852,6 +2870,14 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      write(stdo,*) 'WARNING: The mc_scat_maxtauabs is lt 2. While this is'
      write(stdo,*) '       formally OK, we advise making this at least 10.'
      stop
+  endif
+  !
+  ! For the selectscat analysis stuff (normally not important)
+  !
+  if((selectscat_iscat_first.ne.1).or.(selectscat_iscat_last.ne.1000000000)) then
+     write(stdo,*) 'ANALYSIS MODE: Scattering source and mean intensity only for iscat between ', &
+          selectscat_iscat_first,' and ',selectscat_iscat_last
+     write(stdo,*) 'THE RESULTS ARE NOT MEANT FOR PRODUCTION RUNS, ONLY FOR ANALYSIS.'
   endif
   !
   ! Initialize the Monte Carlo module by allocating the required arrays
@@ -3172,11 +3198,12 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !!$ Global variables from 'montecarlo_module.f90' used in the subroutine 'do_monte_carlo_scattering'
      !
      !!$ Local variables from 'do_monte_carlo_scattering'
-     !$OMP REDUCTION(+:mc_integerspec,mc_visitcell,mc_revisitcell,ieventcounttot)
+     !$OMP REDUCTION(+:mc_integerspec,mc_visitcell,mc_revisitcell,ieventcounttot) &
+     !$OMP REDUCTION(max:mc_revisitcell_max)
      !
      !$ id=OMP_get_thread_num()
      !$ nthreads=OMP_get_num_threads()
-     !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
+  !$ CONTINUE
      !$ iseed=-abs(iseed_start+id)
      !$OMP DO SCHEDULE(dynamic)
      !
@@ -3194,8 +3221,10 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
         !$OMP CRITICAL
         cnt   = cnt + 1
         if(mod(cnt,countwrite).eq.0) then
-           !$   write(stdo,*) 'Thread:',id,'Photon nr:',cnt
-           if(.not.mc_openmp_parallel) write(stdo,*) 'Photon nr ',iphot
+           if (cnt.gt.nphot) cnt = nphot
+           frac = dble(cnt)/dble(nphot)
+           perc = int(frac*100.d0)
+           write(stdo,'(A,"Progress ",I3,"%",1X,I15,"/",I15)',advance='no') char(13), perc, cnt, nphot
            call flush(stdo)
         endif
         !$OMP END CRITICAL
@@ -3232,6 +3261,8 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   enddo
   !$OMP END DO 
   !$OMP END PARALLEL
+  write(stdo,*)
+  call flush(stdo)
   !
   ! OpenMP Parallellization: destroy locks
   !
@@ -4985,6 +5016,7 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
         !
         mc_visitcell   = mc_visitcell + count_samecell + 1
         mc_revisitcell = mc_revisitcell + count_samecell*count_samecell
+        mc_revisitcell_max = max(mc_revisitcell_max,1.d0*count_samecell)
         count_samecell = 0
      else
         !
@@ -5434,6 +5466,11 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
                     !
                     ! ...Now let the AMR module find the cell index
                     !
+                    if(igrid_coord.ge.100) then
+                       write(stdo,*) 'ERROR: The Modified Random Walk is called outside of cell.'
+                       write(stdo,*) '       Please warn the author of RADMC-3D.'
+                       stop
+                    endif
                     if(amr_tree_present) then
                        call amr_findcell(ray_cart_x,ray_cart_y,ray_cart_z,acell)
                        ray_index = acell%leafindex
@@ -6127,6 +6164,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   !
   ok = .true.
   iscatevent = 0
+  selectscat_iscat = 1
 !!  ieventcount = 0         ! For debugging
   do while(ok)
      !
@@ -6245,6 +6283,10 @@ subroutine walk_full_path_scat(params,inu,ierror)
 !!     ieventcount = ieventcount + 1
      !$omp atomic
      ieventcounttot = ieventcounttot + 1
+     !
+     ! For selectscat: Increase counter
+     !
+     selectscat_iscat = selectscat_iscat + 1
      !
      ! Next event
      !
@@ -6894,6 +6936,10 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         !
         enerav  = ener * xxtauabs
         !
+        ! For the selectscat analysis stuff (normally not important)
+        !
+        if((selectscat_iscat.ge.selectscat_iscat_first).and.(selectscat_iscat.le.selectscat_iscat_last)) then
+        !
         ! Add photons to scattering source
         !
         ! NOTE: In the original RADMC I did not divide by 4*pi yet; only
@@ -7200,6 +7246,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
            mcscat_meanint(ray_inu,ray_index) =                            &
                 mcscat_meanint(ray_inu,ray_index) + mnint
         endif
+        endif ! This endif is for the selectscat analysis stuff (normally not important)
         !
         ! Compute the location of this point
         !
@@ -7292,6 +7339,10 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         ! Compute enerav
         !
         enerav  = ener * xxtauabs
+        !
+        ! For the selectscat analysis stuff (normally not important)
+        !
+        if((selectscat_iscat.ge.selectscat_iscat_first).and.(selectscat_iscat.le.selectscat_iscat_last)) then
         !
         ! Add photons to scattering source
         !
@@ -7558,6 +7609,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
            mcscat_meanint(ray_inu,ray_index) =                            &
                 mcscat_meanint(ray_inu,ray_index) + mnint
         endif
+        endif ! This endif is for the selectscat analysis stuff (normally not important)
         !
         ! Compute the new ener and the new tauabs
         !  
@@ -8892,11 +8944,13 @@ subroutine make_emiss_dbase(ntemp,temp0,temp1)
      write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate db_cumulnorm'
      stop 
   endif
+  !$OMP PARALLEL
   allocate(db_cumul(freq_nr+1),STAT=ierr)
   if(ierr.ne.0) then
      write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate db_cumul'
      stop 
   endif
+  !$OMP END PARALLEL
   !
   ! Allocate array used internally for picking random frequency
   !
@@ -9017,11 +9071,11 @@ subroutine free_emiss_dbase()
   db_ntemp=0
   if(allocated(db_temp)) deallocate(db_temp)
   if(allocated(db_cumulnorm)) deallocate(db_cumulnorm)
-  if(allocated(db_cumul)) deallocate(db_cumul)
   if(allocated(db_enertemp)) deallocate(db_enertemp)
   if(allocated(db_logenertemp)) deallocate(db_logenertemp)
   if(allocated(db_emiss)) deallocate(db_emiss)
   !$OMP PARALLEL
+  if(allocated(db_cumul)) deallocate(db_cumul)
   if(allocated(enercum)) deallocate(enercum)
   !$OMP END PARALLEL
 end subroutine free_emiss_dbase
@@ -10161,7 +10215,7 @@ subroutine find_smallest_size_spher_lite(x0,x1,size,idim)
      dist(2)=x0(1)*(x1(2)-x0(2))
      if(dist(2).lt.size) size=dist(2)
      if(idim.ge.3) then
-        dist(3)=x0(1)*sin(x0(2))*(x1(3)-x0(3))
+        dist(3)=x0(1)*sin(0.5d0*(x0(2)+x1(2)))*(x1(3)-x0(3))
         if(dist(3).lt.size) size=dist(3)
      endif
   endif

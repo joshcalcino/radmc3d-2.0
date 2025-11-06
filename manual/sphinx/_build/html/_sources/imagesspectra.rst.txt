@@ -667,6 +667,14 @@ becomes, too).
 are treated as spheres, i.e. non-point-like (see Section
 :ref:`sec-image-stars` and Chapter :ref:`chap-stars`).
 
+*NOTE:* If you want to know, for a given image, how RADMC-3D subpixeled the
+image, you can either set ``camera_diagnostics_subpix=1`` in the ``radmc3d.inp``
+file or add ``diag_subpix`` to the command line. This forces RADMC-3D to
+write out a file called ``subpixeling_diagnostics.out`` which contains
+four columns, for respectivly: ``px,py,pdx,pdy``\ , i.e. the pixel position
+and its size. This allows the user to
+find out if the recursive subpixeling went well or if certain areas were
+over/under-resolved. This is really only meant as a diagnostic.
 
 
 A danger with recursive sub-pixeling
@@ -1152,7 +1160,7 @@ is shown as a 'normal' image in Fig. :numref:`fig-rect-circ-image-2d`.
 With a bit of "getting used to" one will find that the circular images will
 reveal a lot of information.
 
-*Note:* Fig. :numfig:`fig-circ-image-2d` shows an effect similar to what is
+*Note:* Fig. :numref:`fig-circ-image-2d` shows an effect similar to what is
 shown in Fig. :numref:`fig-innerrim-lowres`. This indicates that near the inner
 radius of the model, the radial grid is under-resolved in example model
 ``examples/run_spher2d_1/``: see Section :ref:`sec-things-going-wrong`, point
@@ -1225,6 +1233,29 @@ Example usage:
   radmc3d tausurf 1 lambda 10 incl 45 phi 30
 
 
+
+.. _sec-tracetau:
+
+Maps of optical depth :math:`\tau`
+==================================
+
+Another way to get a better understanding of the optical depth of your model
+is to make an "image of optical depths". It is just like making an image, but
+instead of each pixel containing the intensity :math:`I_\nu` of the image,
+each pixel now contains the full optical depth :math:`\tau_\nu` along the ray.
+In this way you get an optical depth map.
+
+The idea is to simply make an image, as you would normally do, but now add
+the command-line  keyword ``tracetau``. Example: ::
+
+  radmc3d image lambda 10 incl 45 phi 30 tracetau
+
+The image output file ``image.out`` will now contain, for each pixel, the
+optical depth.
+
+You can also use the command-line  keyword ``tracecolumn``, in which case
+your image will not contain the optical depth, but the total column density.
+Note: For now it only includes the column density of the dust.
 
 
 

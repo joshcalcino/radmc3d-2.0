@@ -59,6 +59,33 @@ class simplereaddataobject(object):
     def __init__(self,datatype):
         self.datatype = datatype
 
+class dustkappaobject(object):
+    """
+    Dust opacity object for the RADMC-3D simpleread.py functions.
+    """
+    def __init__(self):
+        self.datatype = 'dustkappa'
+        self.species  = None
+    def plot(self,ax=None,color=None):
+        """
+        Make a log-log plot of this opacity.
+
+        ARGUMENTS:
+          ax          The axis object (None means make new subplot)
+          color       The color (None means automatic)
+        """
+        if ax is None:
+            fig,ax = plt.subplots()
+        if color is None:
+            ax.loglog(self.wav,self.kappa_abs,label='abs')
+            ax.loglog(self.wav,self.kappa_sca,label='scat')
+        else:
+            ax.loglog(self.wav,self.kappa_abs,color=color,label=self.species)
+            ax.loglog(self.wav,self.kappa_sca,':',color=color)
+        ax.set_xlabel(r'$\lambda\;[\mu m]$')
+        ax.set_ylabel(r'$\kappa\;[cm^2/g]$')
+        return fig,ax
+
 def read_grid():
     """
     Reading the amr_grid.inp file, but only for regular grids (not for octree ones). 
@@ -84,7 +111,7 @@ def read_grid():
     data  = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
 
     # Read the header
-    hdr   = np.array(data[:10], dtype=np.int)
+    hdr   = np.array(data[:10], dtype=np.int_)
     data  = data[10:]
 
     # Check the file format
@@ -150,7 +177,7 @@ def read_dustdens(indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
     
     # Read the header
-    hdr       = np.array(data[:3], dtype=np.int)
+    hdr       = np.array(data[:3], dtype=np.int_)
     data      = data[3:]
 
     # Check the file format
@@ -209,7 +236,7 @@ def read_dusttemp(indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
     
     # Read the header
-    hdr       = np.array(data[:3], dtype=np.int)
+    hdr       = np.array(data[:3], dtype=np.int_)
     data      = data[3:]
 
     # Check the file format
@@ -409,7 +436,9 @@ def read_dustkappa(species=None):
     if species[-4:]=='.inp': species = species[:-4]
 
     # Read that dust opacity
-    dustkappa = simplereaddataobject('dustkappa')
+    #dustkappa = simplereaddataobject('dustkappa')
+    dustkappa = dustkappaobject()
+    dustkappa.species = species
     fname     = 'dustkappa_'+species+'.inp'
     print('Reading '+ fname)
     with open(fname, 'r') as rfile:
@@ -472,7 +501,7 @@ def read_gastemp(indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
 
     # Read the header
-    hdr       = np.array(data[:2], dtype=np.int)
+    hdr       = np.array(data[:2], dtype=np.int_)
     data      = data[2:]
 
     # Check the file format
@@ -527,7 +556,7 @@ def read_gasvelocity(indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
 
     # Read the header
-    hdr       = np.array(data[:2], dtype=np.int)
+    hdr       = np.array(data[:2], dtype=np.int_)
     data      = data[2:]
 
     # Check the file format
@@ -584,7 +613,7 @@ def read_molnumdens(molecule,indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
 
     # Read the header
-    hdr       = np.array(data[:2], dtype=np.int)
+    hdr       = np.array(data[:2], dtype=np.int_)
     data      = data[2:]
 
     # Check the file format
@@ -640,7 +669,7 @@ def read_mollevelpop(molecule,indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
 
     # Read the header
-    hdr       = np.array(data[:3], dtype=np.int)
+    hdr       = np.array(data[:3], dtype=np.int_)
     data      = data[3:]
 
     # Check the file format
@@ -658,7 +687,7 @@ def read_mollevelpop(molecule,indexorder='fortran'):
     mollevelpop.nlevels = hdr[2]
 
     # Identities of the levels (for associating them to the levels in the molecule_xxxx.inp file)
-    hdr       = np.array(data[:mollevelpop.nlevels], dtype=np.int)
+    hdr       = np.array(data[:mollevelpop.nlevels], dtype=np.int_)
     data      = data[mollevelpop.nlevels:]
     mollevelpop.levels = hdr
 
@@ -716,7 +745,7 @@ def read_mean_intensity(indexorder='fortran'):
     data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
 
     # Read the header
-    hdr       = np.array(data[:3], dtype=np.int)
+    hdr       = np.array(data[:3], dtype=np.int_)
     data      = data[3:]
 
     # Get the frequencies
@@ -753,3 +782,91 @@ def read_mean_intensity(indexorder='fortran'):
 
     # Return the meanint object
     return meanint
+
+
+def read_subbox(name='dust_temperature',indexorder='fortran'):
+    """
+    Reading a subbox file. Default is subbox for the dust
+    temperature. To use it, you first need to create such a
+    dataset with RADMC-3D. For instance using the command
+
+      ./radmc3d subbox_dust_temperature subbox_nxyz 64 64 64 subbox_xyz01 -2.e15 2.e15 -2.e15 2.e15 -2.e15 2.e15
+
+    This will create the file dust_temperature_subbox.out,
+    which you can then read in python with
+
+      from radmc3d_tools import simpleread as sr
+      q = sr.read_subbox(name='dust_temperature')
+
+    ARGUMENTS:
+      name              The subbox file to read = name+"_subbox.out"
+      indexorder        If 'fortran' then converting array to fortran
+                        index order (default). Else use Python/C order.
+
+    RETURNS:
+      Data object containing:
+
+        .grid           A grid object (see read_grid())
+        .data           An array with the data
+    """
+
+    # Create the subbox object and read the basic data
+    fname     = name+'_subbox.out'
+    subbox    = simplereaddataobject(fname)
+    print('Reading '+fname)
+    data      = np.fromfile(fname, count=-1, sep=" ", dtype=np.float64)
+
+    # Extract the header and create the main data box
+    hdr       = np.array(data[:15], dtype=np.int_)
+    data      = data[15:]
+
+    # Get the grid data
+    nx        = int(hdr[1])
+    ny        = int(hdr[2])
+    nz        = int(hdr[3])
+    xmin      = hdr[5]
+    xmax      = hdr[6]
+    ymin      = hdr[7]
+    ymax      = hdr[8]
+    zmin      = hdr[9]
+    zmax      = hdr[10]
+
+    # Create the grid object and link it to the subbox object
+    grid      = simplereaddataobject('grid')
+    grid.nx   = nx
+    grid.ny   = ny
+    grid.nz   = nz
+    grid.nxi  = nx+1
+    grid.nyi  = ny+1
+    grid.nzi  = nz+1
+    grid.crd_sys = 'car'
+    grid.xi   = np.linspace(xmin,xmax,nx+1)
+    grid.yi   = np.linspace(ymin,ymax,ny+1)
+    grid.zi   = np.linspace(zmin,zmax,nz+1)
+    grid.x    = 0.5*(grid.xi[1:]+grid.xi[:-1])
+    grid.y    = 0.5*(grid.yi[1:]+grid.yi[:-1])
+    grid.z    = 0.5*(grid.zi[1:]+grid.zi[:-1])
+    subbox.grid = grid
+
+    # Check the file format
+    if hdr[0] != 2:
+        msg = 'Unknown format number in '+fname
+        raise RuntimeError(msg)
+
+    # Convert the rest of the data to the proper shape
+    data = np.reshape(data, [grid.nz, grid.ny, grid.nx])
+
+    # If indexorder is set to 'fortran', then the inner index of the array
+    # should be left (even though in Python the inner index is right). This
+    # is to assure that the index order in the Python arrays is the same as
+    # in the RADMC-3D code. But by setting indexorder to anything else, you
+    # can keep Python natural order (which is equal to C index order), in
+    # which the inner index is the rightmost index.
+    if indexorder=='fortran':
+        data = np.swapaxes(data, 0, 2)
+
+    # Now add this to the object
+    subbox.data = data
+
+    # Return the subbox object
+    return subbox

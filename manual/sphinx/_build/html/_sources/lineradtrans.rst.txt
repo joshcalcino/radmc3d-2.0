@@ -132,6 +132,13 @@ But RADMC-3D naturally includes overlapping lines, at least in the
 ray-tracing (for spectra and images). For non-LTE modes the line
 overlapping is not yet (as of December 2011) included.
 
+RADMC-3D also allows for a more general line profile: The Voigt
+profile, which is a combination of the Gaussian and the Lorentz
+profiles. It is implemented in RADMC-3D, but this is not yet well
+documented, nor very well tested yet. Please check the
+``userdef_compute_lorentz_delta()`` function in the
+``userdef_module.f90`` module and the ``voigt_humlicek()``
+function in the ``lines_module.f90`` module.
 
 .. _sec-line-trans-modes:
 
@@ -249,7 +256,7 @@ Here is a list:
   temperature. You can do this obviously by hand: read the output dust
   temperature and create the equivalent gas temperature input file from it. But
   that is cumbersome.  By setting ``tgas_eq_tdust=1`` you tell ``radmc3d`` to
-  simply read the ``dust_temperature.inp`` file and then equate the gas
+  simply read the ``dust_temperature.dat`` file and then equate the gas
   temperature to the dust temperature. If multiple dust species are present,
   only the first species will be used.
 

@@ -16,6 +16,7 @@ radmc3dPy/radsources.py
 radmc3dPy/reggrid.py
 radmc3dPy/setup.py
 radmc3dPy/staratm.py
+radmc3dPy/subbox.py
 radmc3dPy.egg-info/PKG-INFO
 radmc3dPy.egg-info/SOURCES.txt
 radmc3dPy.egg-info/dependency_links.txt
@@ -31,4 +32,3 @@ radmc3dPy/models/simple_1.py
 radmc3dPy/models/spher1d_1.py
 radmc3dPy/models/spher2d_1.py
 radmc3dPy/models/template.py
-radmc3dPy/models/test_scattering_1.py

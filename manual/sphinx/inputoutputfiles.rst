@@ -250,7 +250,7 @@ is a non-exhaustive list of the variables that can be set.
   :ref:`sec-recursive-subpixeling`), for spherical coordinates, 
   preventing that too coarse subpixeling would reduce the accuracy. 
 
-* ``camera_min_dr`` (default 0.003) *[Fine-tuning only]*
+* ``camera_min_drr`` (default 0.003) *[Fine-tuning only]*
   
   Fine-tuning parameter for recursive subpixeling, for spherical coordinates, 
   assuring that not too fine subpixeling would slow down the rendering of
@@ -347,7 +347,7 @@ is a non-exhaustive list of the variables that can be set.
 * ``tgas_eq_tdust`` (default: 0)
   
   By setting ``tgas_eq_tdust=1`` you tell ``radmc3d`` to
-  simply read the ``dust_temperature.inp`` file and then equate
+  simply read the ``dust_temperature.dat`` file and then equate
   the gas temperature to the dust temperature. If multiple dust species
   are present, only the first species will be used.
 
