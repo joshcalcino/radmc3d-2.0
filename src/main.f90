@@ -213,7 +213,7 @@ program radmc3d
   rt_mcparams%debug_write_stats= 0
   rt_mcparams%debug_write_path = 0
 !!  rt_mcparams%debug_write_eventcounts = 0
-  rt_mcparams%countwrite       = 1000
+  rt_mcparams%countwrite       = 100000
   rt_mcparams%ivstrt           = 1       ! Dust species 1 used for vert struct
   rt_mcparams%vserrtol         = 0.d0
   rt_mcparams%niter_vstruct    = 0
