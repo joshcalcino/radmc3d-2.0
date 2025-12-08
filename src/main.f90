@@ -203,7 +203,7 @@ program radmc3d
   !                                         ! switched on.
   rt_mcparams%enthres          = 1.d-2
   rt_mcparams%irestart         = 0
-  rt_mcparams%cntdump          = 10000000
+  rt_mcparams%cntdump          = 100000
   rt_mcparams%ntemp            = 1000
   rt_mcparams%itempdecoup      = 1
   rt_mcparams%temp0            = 0.01d0
