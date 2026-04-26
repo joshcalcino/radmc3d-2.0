@@ -33,7 +33,7 @@ module rtglobal_module
   !                                         ! since last update exceeds enthres
      integer :: irestart                    ! If set, then the simulations is
   !                                         ! restarted from a safety backup.
-     integer :: cntdump                     ! Make safety backup every cntdump
+     integer*8 :: cntdump                   ! Make safety backup every cntdump
   !                                         ! photons.
      integer :: ntemp                       ! Number of bins of temperature
   !                                         ! for precalculated dust thermal
@@ -56,7 +56,7 @@ module rtglobal_module
      integer :: ivstrt                      ! Which dust species represents the
   !                                         !    gas temperature for the 
   !                                         !    vertical structure iteration?
-     integer :: nphotdiff                   ! >0 = Use diffusion equation
+     integer*8 :: nphotdiff                 ! >0 = Use diffusion equation
   !                                         !    where photon statistics is bad.
   !                                         !    (For now: not yet ready)
      double precision :: errtoldiff         ! Error tolerance for the diffusion
@@ -74,7 +74,7 @@ module rtglobal_module
   !                                         !    to a file.
      integer :: debug_write_path            ! =1 Write the path of the photon
   !   integer :: debug_write_eventcounts     ! =1 Write for each photon nr of events
-     integer :: countwrite                  ! Each countwrite, write to standard output
+     integer*8 :: countwrite                ! Each countwrite, write to standard output
   !   integer :: incl_scatsrc_mctherm        ! Do we make scattering src while doing therm MC?
      logical :: optimized_motion            ! For high optical deth cells
      double precision :: optim_dtau         ! For high optical deth cells

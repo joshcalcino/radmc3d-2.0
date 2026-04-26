@@ -2214,9 +2214,9 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   doubleprecision :: frac
   logical :: ievenodd
   logical,optional :: resetseed
-  integer :: ierror,ierrpriv,countwrite,index,illum
+  integer :: ierror,ierrpriv,index,illum
   integer :: inu,ispec,istar,icell,nsrc,nstarsrc
-  integer*8 :: iphot,ipstart,nphot,cnt,cntdump
+  integer*8 :: iphot,ipstart,nphot,cnt,cntdump,countwrite
   integer :: iseeddum,isd,itemplate
   integer :: perc
   logical :: mc_emergency_break
@@ -2822,8 +2822,8 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   logical,optional :: resetseed
   logical,optional :: scatsrc,meanint
   logical :: compute_scatsrc,compute_meanint
-  integer*8 :: iphot,nphot,cnt,cntdump
-  integer :: countwrite,index
+  integer*8 :: iphot,nphot,cnt,cntdump,countwrite
+  integer :: index
   integer :: ispec,istar,icell,illum
   integer :: iseeddum,isd,itemplate,nsrc,nstarsrc
   integer :: perc
